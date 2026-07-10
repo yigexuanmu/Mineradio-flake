@@ -58,104 +58,57 @@ nix build github:yigexuanmu/Mineradio-flake
 
 ---
 
-## 2. 作为 flake input 引入（推荐）
+## 2. 在 flake.nix 中引入
 
-在你的系统 flake（通常是 `/etc/nixos/flake.nix`）中把本 flake 加为 input，并用 `environment.systemPackages` 安装。
+在系统 flake（`/etc/nixos/flake.nix`）的 `inputs` 里加上本 flake：
 
 ```nix
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-
-    mineradio-flake = {
-      url = "github:yigexuanmu/Mineradio-flake";
-      # 复用你的 nixpkgs，避免引入第二份 nixpkgs 导致 electron 版本不一致
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    mineradio.url = "github:yigexuanmu/Mineradio-flake";
   };
 
-  outputs = { self, nixpkgs, mineradio-flake, ... }:
-    let
-      system = "x86_64-linux";
-    in
-    {
-      nixosConfigurations."<你的主机名>" = nixpkgs.lib.nixosSystem {
-        inherit system;
-        modules = [
-          ({ config, pkgs, ... }: {
-            environment.systemPackages = [
-              mineradio-flake.packages.${system}.default
-            ];
-          })
-        ];
-      };
-    };
+  outputs = { self, nixpkgs, mineradio, ... } @ inputs: {
+    # ...
+  };
 }
 ```
 
-应用配置：
-
-```bash
-sudo nixos-rebuild switch
-```
-
-之后即可在终端执行 `mineradio`，并在桌面环境的应用菜单里看到 **Mineradio**（`.desktop` 会被安装到 `share/applications/`）。
+> 提示：如果想复用你自己的 nixpkgs（避免引入第二份导致 `electron` 版本不一致），可加一行 `inputs.nixpkgs.follows = "nixpkgs";`：
+>
+> ```nix
+> mineradio = {
+>   url = "github:yigexuanmu/Mineradio-flake";
+>   inputs.nixpkgs.follows = "nixpkgs";
+> };
+> ```
 
 ---
 
-## 3. 用 Home Manager 安装
+## 3. 安装到系统
 
-如果你用 Home Manager 管理用户环境，把 flake 加为 Home Manager 的 input，再用 `home.packages`。
-
-Home Manager 作为 NixOS 模块时的示例（`/etc/nixos/flake.nix`）：
+**NixOS（`environment.systemPackages`）**
 
 ```nix
-{
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-
-    home-manager = {
-      url = "github:nix-community/home-manager";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    mineradio-flake = {
-      url = "github:yigexuanmu/Mineradio-flake";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-  };
-
-  outputs = { self, nixpkgs, home-manager, mineradio-flake, ... }:
-    let
-      system = "x86_64-linux";
-      username = "<你的用户名>";
-    in
-    {
-      nixosConfigurations."<你的主机名>" = nixpkgs.lib.nixosSystem {
-        inherit system;
-        modules = [
-          home-manager.nixosModules.home-manager
-          {
-            home-manager.useUserPackages = true;
-            home-manager.users.${username} = { pkgs, ... }: {
-              home.packages = [
-                mineradio-flake.packages.${system}.default
-              ];
-            };
-          }
-        ];
-      };
-    };
-}
+environment.systemPackages = [
+  inputs.mineradio.packages.x86_64-linux.default
+];
 ```
 
-若 Home Manager 是**独立 flake**（`home-manager switch --flake`），则在你的 Home Manager `flake.nix` 的 `inputs` 里加同样的 `mineradio-flake`，并在 `outputs` 的 user 配置里写 `home.packages = [ mineradio-flake.packages.${system}.default ];`。
+应用：`sudo nixos-rebuild switch`。之后终端执行 `mineradio`，应用菜单里也会出现 **Mineradio**（`.desktop` 已安装）。
 
-应用：
+**Home Manager（`home.packages`）**
 
-```bash
-home-manager switch   # 或 sudo nixos-rebuild switch（随你的接入方式）
+```nix
+home.packages = [
+  inputs.mineradio.packages.x86_64-linux.default
+];
 ```
+
+应用：`home-manager switch`（或随你的接入方式 `sudo nixos-rebuild switch`）。
+
+> Home Manager 作为独立 flake 时，同样在它的 `inputs` 里加 `mineradio.url = "github:yigexuanmu/Mineradio-flake"`，再在用户配置里写上面的 `home.packages` 即可。
 
 ---
 
