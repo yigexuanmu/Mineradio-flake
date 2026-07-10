@@ -1,6 +1,27 @@
-# Mineradio on NixOS 安装教程
+# Mineradio
 
-本教程介绍在 NixOS 上通过 [`yigexuanmu/Mineradio-flake`](https://github.com/yigexuanmu/Mineradio-flake) 安装 **Mineradio**（沉浸式音乐播放器，Electron 封装）的几种方式：
+**Mineradio** 是一款沉浸式音乐播放器（Electron 封装），融合天气电台、搜索播放、歌词舞台、粒子视觉和 3D 歌单架，并接入网易云音乐 / QQ 音乐的账号、搜索、歌单、播客等体验。
+
+本仓库 [`yigexuanmu/Mineradio-flake`](https://github.com/yigexuanmu/Mineradio-flake) 是 Mineradio 的 **Nix flake 打包**，让它在 NixOS（及任何支持 Nix flakes 的 Linux）上可一条命令安装运行。
+
+## 这个 flake 里有什么
+
+- **应用源码**：来自上游官方仓库 [`XxHuberrr/Mineradio`](https://github.com/XxHuberrr/Mineradio)，本仓库不包含应用代码。
+- **运行时依赖**：`gsap` / `mpg123-decoder`（WASM 音频解码）/ `NeteaseCloudMusicApi`，已预构建为 GitHub Release 资产，由 `fetchTarball` 引入。
+- **Electron**：来自 nixpkgs（`electron_42`），不进 node_modules。
+- **产出**：`packages.x86_64-linux.default` = `mineradio`，含启动脚本、`.desktop` 与图标。
+
+## 特性 / 说明
+
+- 本地起一个 HTTP 服务（默认 `127.0.0.1:3000`）提供搜索、歌词、天气电台等 API。
+- 登录态、歌单、自定义封面等存于 Electron `userData`，不写入只读 store。
+- 已把 Windows 专属的 `use-angle d3d11` 改为 `gl`，并开启 GPU 加速相关开关。
+
+---
+
+# NixOS 安装教程
+
+本教程介绍在 NixOS 上通过本 flake 安装 Mineradio 的几种方式：
 
 1. 直接 `nix run` / `nix build` 试用
 2. 把 flake 作为 input 引入，用 `systemPackages` 装到系统
