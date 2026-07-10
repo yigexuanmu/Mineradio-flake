@@ -12,15 +12,22 @@
 
       electron = pkgs.electron_42;
 
+      # 应用源码来自上游官方仓库 XxHuberrr/Mineradio (本 flake 仓库只放 nix 文件)
+      mineradioSrc = pkgs.fetchFromGitHub {
+        owner = "XxHuberrr";
+        repo = "Mineradio";
+        rev = "6b130103f759e5dcd1e133700071c8216b8fa5a6";
+        hash = "sha256-FS82IdKHiUxLX3Y3Azso72+stRiMDsFPxt1gEfDd1WI=";
+      };
+
       # 运行时依赖 (productionDependencies: gsap / mpg123-decoder / NeteaseCloudMusicApi)
       # devDependencies (electron / electron-builder / rcedit) 不安装, 由 nixpkgs 提供 electron。
-      # 本机构建沙箱 (nixbld) 无外网, 无法在 derivation 内 `npm ci`。
-      # 故在本机用宿主网络 `npm ci --omit=dev` 装好并打成 tarball (node_modules.tar.gz),
-      # 再以 fetchTarball 引入。重新生成:
+      # 构建沙箱 (nixbld) 无外网, 无法在 derivation 内 `npm ci`, 故预构建为 tarball 并作为本仓库的
+      # GitHub Release 资产提供, 由 fetchTarball 引入。重新生成:
       #   npm ci --omit=dev && tar -czf node_modules.tar.gz -C node_modules . && nix hash file node_modules.tar.gz
-      # 并替换为下方 sha256。
+      # 再上传到 releases/tag/node_modules-v1.1.1 并替换下方 sha256。
       nodeDeps = builtins.fetchTarball {
-        url = toString ./node_modules.tar.gz;
+        url = "https://github.com/yigexuanmu/Mineradio-flake/releases/download/node_modules-v1.1.1/node_modules.tar.gz";
         sha256 = "0py7pydzy9ys25apyppgh38gmyk07za95xprv60v3kbrrnmc3inw";
       };
     in
@@ -30,8 +37,7 @@
           pname = "mineradio";
           version = "1.1.1";
 
-          # 运行期不需要源码编译, 直接沿用已装好的 node_modules 与 app 文件
-          src = ./.;
+          src = mineradioSrc;
 
           nativeBuildInputs = [
             pkgs.copyDesktopItems
@@ -41,7 +47,6 @@
             electron
           ];
 
-          # 不需要编译, 直接 install
           dontBuild = true;
 
           installPhase = ''
@@ -64,7 +69,7 @@
 
             # 图标
             mkdir -p "$out/share/icons/hicolor/512x512/apps"
-            cp "${./build/icon.png}" "$out/share/icons/hicolor/512x512/apps/mineradio.png"
+            cp "$src/build/icon.png" "$out/share/icons/hicolor/512x512/apps/mineradio.png"
 
             # 启动器: 用 nixpkgs 的 electron 跑本 app 目录
             # server.js 会被 desktop/main.js require 起来, 监听 127.0.0.1:PORT
@@ -94,7 +99,7 @@ EOF
           ];
 
           meta = with pkgs.lib; {
-            homepage = "https://github.com/yigexuanmu/Mineradio-flake";
+            homepage = "https://github.com/XxHuberrr/Mineradio";
             description = "沉浸式音乐播放器 (Electron)";
             license = licenses.gpl3Only;
             mainProgram = "mineradio";
